@@ -5,6 +5,7 @@
 from scrapy.spider import BaseSpider
 from scrapy.selector import HtmlXPathSelector
 import json
+import os
 
 class MySpider(BaseSpider):
     name = "craig"
@@ -108,5 +109,5 @@ class MySpider(BaseSpider):
                     fileName = speaker + " " + debateName + ".txt"
 
             # Write this to a file
-            with open(fileName, 'w') as f:
+            with open(os.path.join('transcripts', fileName), 'w') as f:
                 f.write(allTextOfSpeaker.encode('utf8'))
