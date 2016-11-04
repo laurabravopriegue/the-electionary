@@ -9,6 +9,7 @@ import os
 
 class MySpider(BaseSpider):
     name = "download"
+    download_delay = 5
 
     with file('urls.json', 'r') as f:
         startData = json.load(f)
