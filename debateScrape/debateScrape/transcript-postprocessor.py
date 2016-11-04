@@ -25,6 +25,11 @@ for htmlFile in htmlList:
         debateDate = date
         break
 
+    name = hxs.select("//span[@class='paperstitle']/text()").extract()
+    for name in name:
+        debateName = name
+        break
+
     debateDate = debateDate.split()
     wordMonth = debateDate[0]
 
@@ -37,7 +42,7 @@ for htmlFile in htmlList:
     monthNo = int(months.index(wordMonth) + 1)
 
     debateDateISO = dt.date(yearNo, monthNo, dayNo)
-    debateDateISO.isoformat()
+    debateDateISO = debateDateISO.isoformat()
 
     # This thing extracts all of the text from the page
     titles = hxs.select("//span[@class='displaytext']//text()").extract()
@@ -122,7 +127,7 @@ for htmlFile in htmlList:
                 allTextOfSpeaker = allTextOfSpeaker + " " + (sentenceDict["text"])
                 fileName = speaker + " " + debateDateISO + ".json"
 
-        fileDict = {"speaker": speaker, "date": debateDateISO, }
+        fileDict = {"speaker": speaker, "date": debateDateISO, "description": debateName, "text": allTextOfSpeaker}
 
         # Write this to a file
         with open(os.path.join('transcripts2', fileName), 'w') as f:
