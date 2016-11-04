@@ -1,3 +1,6 @@
+# Don't use this file any more.
+# It's inefficient.
+
 # Transcript Processor
 # Downloads from a specified list of URLs
 # Separates debate transcripts into what was said by each speaker
@@ -8,7 +11,7 @@ import json
 import os
 
 class MySpider(BaseSpider):
-    name = "craig"
+    name = "Arl7mQ6dsXh0eCfNDGpRBIXQFsfV"
 
     with file('urls.json', 'r') as f:
         startData = json.load(f)

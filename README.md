@@ -1,18 +1,62 @@
 # the-electionary
 
-## How to use the scrapy programs
+## What this is
 
-In order to use `url-fetcher.py`, you first need a file `url.txt` in the directory `debateScrape/debateScrape`
-This file simply needs the starting URL.
-You also need another file, `urls.json`.
-This file should take the following form:
+Software to download a series of debate transcripts and process them.
 
-`{"start_urls":["url1", "url2"],"allowed_domains":"domain"}`
+## How to use it
 
-In order to run the file, you must first install scrapy (Google for documentation if you're not sure how.)
+### Prerequisites
 
-Then, to run the programs, navigate to `debateScrape/debateScrape` in the terminal.
+You must have scrapy installed before using this code.
 
-Then run `scrapy crawl geoffrey` followed by `scrapy crawl craig`.
+To install scrapy, run the following in Terminal:
 
-The results will arrive in `debateScrape/debateScrape/transcripts`.
+`pip install scrapy`
+
+### Downloading the transcripts
+
+Go to Terminal, and navigate to `debateScrape/debateScrape` in the terminal.
+
+Then run `scrapy crawl urlfetch`. This fetches the list of URLs to download from.
+Then run `scrapy crawl download`. This downloads all the HTML files containing the transcripts.
+Be aware that this will take some time. The spider has been set to delay between downloading each file, to reduce server load for the host.
+There should not be any need to do this more than once.
+The HTML files will be stored in `debateScrape/debateScrape/html-files`. 
+ 
+### Processing the transcripts
+
+Now that you have all the HTML downloaded, you can now do whatever processing you like locally, which will be faster and will prevent unnecessary load on the host.
+As a starting point, try running `transcript-postprocessor.py`.
+This will produce a transcript for each candidate's speech in an individual debate in JSON format, located in the `debateScrape/debateScrape/transcripts` folder.
+
+If you want to access the text or other attributes from these JSON files, you can use the following code:
+(the information contained in the JSON file is detailed below)
+
+~~~~
+transcriptList = os.listdir('transcripts')
+
+for item in transcriptList:
+    with file(os.path.join('transcripts', item), 'r') as f:
+        transcript = json.read(f)
+        
+    # For full text of the speech of one person in the transcript:    
+    text = transcript['text']
+    
+    # For the speaker's name:
+    speaker = transcript['speaker']
+    
+    # For a description of the debate:
+    # (e.g. "Democratic Candidates Debate in Brooklyn, New York")
+    description = transcript['description']
+    
+    # For the date of the debate:
+    # (e.g. "2016-04-14")
+    debateDate = transcript['date']
+    
+    
+    
+    
+    #WHATEVER YOU WANT TO DO WITH THE TEXT HERE.
+    
+~~~~

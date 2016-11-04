@@ -6,21 +6,15 @@ from scrapy.selector import HtmlXPathSelector
 import json
 
 class MySpider(BaseSpider):
-    name = "geoffrey"
+    name = "urlfetch"
 
-    with file('urls.json', 'r') as f:
-        startData = json.load(f)
     with file('url.txt', 'r') as f:
         url = f.read()
 
-    allowed_domains = startData["allowed_domains"]
+    allowed_domains = ["ucsb.edu"]
     start_urls = [url]
 
     def parse(self, response):
-
-        with file('urls.json', 'r') as f:
-            startData = json.load(f)
-        allowed_domains = startData["allowed_domains"]
 
         hxs = HtmlXPathSelector(response)
 
