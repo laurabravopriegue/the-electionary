@@ -10,11 +10,10 @@
 # If there are uppercase statements followed by colons, use those.
 # Only then resort to more difficult approaches.
 
-from scrapy.selector import HtmlXPathSelector
+from scrapy.selector import Selector
 import json
 import os
-from scrapy.http import HtmlResponse
-import datetime as dt
+import commonfunctions as cf
 
 # By default, the program runs only for a sample of files.
 # To change this, change the following to False.
@@ -32,138 +31,98 @@ else:
 if transcriptDir not in os.listdir(os.curdir):
     os.mkdir(transcriptDir)
 
-# List all the files in the directory
+# List all the files in the directory.
 htmlList = os.listdir(htmlDirectory)
 
 
-def listToItem(anyList):
-    for item in anyList:
-        return item
+# Very large function to extract the text from a selector.
+def text_extract(selector, transcript_type):
+    labelled_speeches = []
 
+    # This is only able to deal with those transcripts where the speaker names
+    # are contained within <b> elements.
+    if transcript_type == 'bold':
 
-def getDebateDate(hxs):
-    date = hxs.select("//span[@class='docdate']/text()").extract()
+        # First we just need to take out the displaytext part.
+        transcript_displaytext = selector.xpath("//span[@class='displaytext']").extract()
+        transcript_displaytext = cf.list_to_item(transcript_displaytext)
 
-    debateDate = listToItem(date)
+        # Split at the <b> tags.
+        transcript_text = transcript_displaytext.split("<b>")
 
-    # The date is not in a useful format, so let's change that.
-    # Some uninteresting code to do that is below.
+        for text_segment in transcript_text:
 
-    debateDate = debateDate.split()
-    wordMonth = debateDate[0]
+            # Split again at the closing </b> tags (we need to remove these)
+            text_segment = text_segment.split("</b>")
 
-    debateDate[1] = debateDate[1].split(',')
-    dayNo = int(debateDate[1][0])
-    yearNo = int(debateDate[2])
+            text_segment_list = []
 
-    months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
-              "November", "December"]
-    monthNo = int(months.index(wordMonth) + 1)
+            # Need to convert back into a Selector, so we can use XPath methods again.
+            for item in text_segment:
+                text_segment_list.append(Selector(text=item))
 
-    # Finally we use the datetime library to store the date as a date object
-    # and then convert that to an ISO format date.
-    debateDate = dt.date(yearNo, monthNo, dayNo)
-    return debateDate.isoformat()
+            # Only proceed if we have two elements in this list: these will be name and sentence.
+            if len(text_segment_list) > 1:
 
+                # Extract the speaker's name and reformat.
+                speaker_name = text_segment_list[0].xpath("//text()").extract()
+                speaker_name = cf.list_to_item(speaker_name)
+                speaker_name = speaker_name.replace(":", "")
 
-def textExtract(hxs, transcriptType):
-    labelledSpeeches = []
-    if transcriptType == 'bold':
-        transcriptDisplayText = hxs.select("//span[@class='displaytext']").extract()
-        print transcriptDisplayText
-
-        # Perhaps convert this to XPath Methods?
-        # There must be a way...
-        for transcriptDisplayText in transcriptDisplayText:
-            transcriptDisplayText = transcriptDisplayText
-        splitTdtByBs = transcriptDisplayText.split("<b>")
-        print splitTdtByBs
-
-        i = 0
-
-        for splitTdtByB in splitTdtByBs:
-            i += 1
-
-            splitTdtBwithin = splitTdtByB.split("</b>")
-            print "splitTdtBwithin:" + str(splitTdtBwithin)
-
-            splitTdtBwithinResponses = []
-
-            for item in splitTdtBwithin:
-                splitTdtBwithinResponses.append(HtmlXPathSelector(HtmlResponse(url="", body=item, encoding='utf8')))
-
-            if len(splitTdtBwithin) > 1:
-
-                date2 = splitTdtBwithinResponses[0].select("//text()").extract()
-                speakerName = listToItem(date2)
-                speakerName = speakerName.replace(":", "")
-
-                print "speakerName: " + speakerName
-
-                date2 = splitTdtBwithinResponses[1].select("//text()").extract()
-                pieceOfSpeech = ""
-                for item in date2:
-                    pieceOfSpeech += (" " + item)
-                print "pieceOfSpeech: " + pieceOfSpeech
+                # Extract all the other text which is not in <b> tags
+                # This is a list; there is a lot in other tags, such as <p> etc.
+                sentence_list = text_segment_list[1].xpath("//text()").extract()
+                sentence = ""
+                for item in sentence_list:
+                    # Adding a space here, because <br> and <p> tags don't always have spaces
+                    # which would otherwise concatenate words together.
+                    sentence += (" " + item)
 
             else:
-                speakerName = "unknown"
-                pieceOfSpeech = splitTdtBwithinResponses[0].select("//text()").extract()
-                pieceOfSpeech = listToItem(pieceOfSpeech)
-                print "unknown:" + str(splitTdtBwithin[0])
-                print "unknown:" + str(pieceOfSpeech)
 
-            labelledSpeech = {"speaker": speakerName, "text": pieceOfSpeech}
-            labelledSpeeches.append(labelledSpeech)
-        print labelledSpeeches
-        return labelledSpeeches
+                # If we don't have anything in <b> tags, list as unknown speaker.
+                speaker_name = "unknown"
+                sentence = ""
+                for item in sentence_list:
+                    sentence += (" " + item)
+
+            # Return a dictionary of return speaker-text pairs.
+            labelled_speech = {"speaker": speaker_name, "text": sentence}
+            labelled_speeches.append(labelled_speech)
+
+        return labelled_speeches
 
 
 for htmlFile in htmlList:
 
     # Read the HTML into a file object
     with file(os.path.join(htmlDirectory, htmlFile), 'r') as f:
-        response = f.read()
+        htmlText = f.read()
 
-    # Instantiate scrapy's HtmlResponse class with that text
-    # This is so that scrapy will be happy processing the file
-    # FOR SOME REASON, THIS REPLACE METHOD IS NOT WORKING HERE. I DON'T KNOW WHY.
-    response = response.replace("</b><b>","")
+    # Remove </b><b> pairs
+    htmlText = htmlText.replace("</b><b>", "")
 
-    print response
-    if htmlFile == 'April 26, 2007 Democratic Presidential Candidates Debate at South Carolina State University in Orangeburg.html':
-        break
-    response = HtmlResponse(url="", body=response)
+    # Instantiate TranscriptSelector
+    # TranscriptSelector inherits from scrapy.Selector and adds some functions of our own.
+    # selector is a useful object that we can make various function calls from.
+    selector = cf.TranscriptSelector(text=htmlText)
 
-    # Again we're instantiating another scrapy subclass.
-    # This allows us to use all scrapy's selection methods.
-    hxs = HtmlXPathSelector(response)
+    # METADATA: Get the name and date of the debate
+    debateName = selector.get_debate_name()
+    debateDateISO = selector.get_debate_date()
 
-    # METADATA
+    # DATA
 
-    # Get the name of the debate
-    name = hxs.select("//span[@class='paperstitle']/text()").extract()
-    for name in name:
-        debateName = name
-        break
-
-    # Get the date of the debate
-
-    debateDateISO = getDebateDate(hxs)
-
-    #   DATA
-
-    textFromBoldElements = hxs.select("//span[@class='displaytext']//b//text()").extract()
+    textFromBoldElements = selector.xpath("//span[@class='displaytext']//b//text()").extract()
     if textFromBoldElements != "":
         transcriptType = "bold"
-        sentenceDicts = textExtract(hxs, transcriptType)
+        sentenceDicts = text_extract(selector, transcriptType)
 
     # Identify all the speakers in the transcript, without duplicates
     speakerList = []
 
     for sentenceDict in sentenceDicts:
         speakerList.append(sentenceDict["speaker"])
-    print set(speakerList)
 
     for speaker in set(speakerList):
         # Make a string for each speaker
