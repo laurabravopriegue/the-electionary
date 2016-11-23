@@ -1,3 +1,71 @@
+# 1988-10-13 BAD
+# 2004-10-13 OK, but also title issues
+# 1996-10-16 as A
+# 2012-10-16 as A
+# 2012-10-03 as A
+# 2004-10-05 BAD
+# 1996-10-06 as A
+# 2004-10-08 as A
+# 1980-09-21 BAD
+# 2004-09-30 as A
+
+# This is only able to deal with those transcripts where the speaker names
+# are contained within <b> elements.
+if transcript_type == 'bold':
+    tag = "b"
+    closeTag = "</b>"
+
+    # First we just need to take out the displaytext part.
+    transcript_displaytext = selector.xpath("//span[@class='displaytext']").extract()
+    transcript_displaytext = cf.list_to_item(transcript_displaytext)
+
+    # Split at the <b> tags.
+    transcript_text = transcript_displaytext.split("<b>")
+
+    for text_segment in transcript_text:
+
+        # Split again at the closing </b> tags (we need to remove these)
+        text_segment = text_segment.split("</b>")
+
+        text_segment_list = []
+
+        # Need to convert back into a Selector, so we can use XPath methods again.
+        for item in text_segment:
+            text_segment_list.append(Selector(text=item))
+
+        # Only proceed if we have two elements in this list: these will be name and sentence.
+        if len(text_segment_list) > 1:
+
+            # Extract the speaker's name and reformat.
+            speaker_name = text_segment_list[0].xpath("//text()").extract()
+            speaker_name = cf.list_to_item(speaker_name)
+            if speaker_name is not None:
+                speaker_name = speaker_name.replace(":", "")
+
+            # Extract all the other text which is not in <b> tags
+            # This is a list; there is a lot in other tags, such as <p> etc.
+            sentence_list = text_segment_list[1].xpath("//text()").extract()
+            sentence = ""
+            for item in sentence_list:
+                # Adding a space here, because <br> and <p> tags don't always have spaces
+                # which would otherwise concatenate words together.
+                sentence += (" " + item)
+
+        else:
+
+            # If we don't have anything in <b> tags, list as unknown speaker.
+            speaker_name = "unknown"
+            sentence = ""
+            sentence_list = text_segment_list[0].xpath("//text()").extract()
+            for item in sentence_list:
+                sentence += (" " + item)
+
+        # Return a dictionary of return speaker-text pairs.
+        labelled_speech = {"speaker": speaker_name, "text": sentence}
+        labelled_speeches.append(labelled_speech)
+
+    return labelled_speeches
+
 # Extract all of the text, and put it all in one long string, allText.
 titles = hxs.select("//span[@class='displaytext']//text()").extract()
 allText = ""

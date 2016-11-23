@@ -2,15 +2,21 @@ import datetime as dt
 from scrapy.selector import Selector
 
 
-def list_to_item(anyList):
-    for item in anyList:
+def list_to_item(any_list):
+    for item in any_list:
         return item
+
+
+def iso_to_datetime(iso_string):
+    year = int(iso_string[0:4])
+    month = int(iso_string[5:7])
+    day = int(iso_string[8:10])
+    return dt.date(year, month, day)
 
 
 # This class is a custom version of scrapy's Selector class
 # which enables us to include some of our own functions.
 class TranscriptSelector(Selector):
-
     # Function to get the date of the debate.
     def get_debate_date(self):
         date = self.xpath("//span[@class='docdate']/text()").extract()
