@@ -16,7 +16,7 @@ import commonfunctions as cf
 # By default, the program runs only for a sample of files.
 # To change this, change the following to False.
 runForSample = True
-# runForSample = False
+runForSample = False
 
 if runForSample:
     htmlDirectory = 'html-files-sample'
@@ -33,15 +33,15 @@ if transcriptDir not in os.listdir(os.curdir):
 htmlList = os.listdir(htmlDirectory)
 
 
-# htmlList = ["December 9, 2007 Republican Presidential Candidates Debate at the University of Miami.html"]
-
-
 # Function to extract the relevant text from a <p> element.
-def extract_text_from_p(p_selector, default_speaker_name, tr_type, first=False):
-    # Use the default speaker name as passed to function.
-    speaker_name = default_speaker_name
+def extract_text_from_p(p_selector, tr_type, first=False):
+    speaker_name = None
 
-    if tr_type == 'b' or tr_type == 'i':
+    if tr_type == 'bold' or tr_type == 'italic':
+        if tr_type == 'bold':
+            tag = 'b'
+        elif tr_type == 'italic':
+            tag = 'i'
         # If we're dealing with the first one, then we know where the <i> or <b> tag will be.
         if first:
             tag_range = [26, 29]
@@ -49,7 +49,7 @@ def extract_text_from_p(p_selector, default_speaker_name, tr_type, first=False):
             tag_range = [3, 6]
 
         # Check if there is a relevant tag
-        if p_selector.extract()[tag_range[0]:tag_range[1]] == "<" + tr_type + ">":
+        if p_selector.extract()[tag_range[0]:tag_range[1]] == "<" + tag + ">":
 
             # If there isn't anything after the italic element, don't include it
             # This deals with the problem subtitles, which are introducing false speakers.
@@ -58,7 +58,7 @@ def extract_text_from_p(p_selector, default_speaker_name, tr_type, first=False):
                     or p_selector.xpath(".//text()").extract()[1].replace(" ", "") == "":
                 pass
             else:
-                speaker_name = p_selector.xpath(".//" + tr_type + "/text()").extract()
+                speaker_name = p_selector.xpath(".//" + tag + "/text()").extract()
                 speaker_name = cf.list_to_item(speaker_name)
 
             # Now we build the sentence. This is from the text in the selector.
@@ -78,7 +78,7 @@ def extract_text_from_p(p_selector, default_speaker_name, tr_type, first=False):
             for words in p_selector.xpath(".//text()").extract():
                 sentence += (" " + words)
 
-    elif tr_type == 'u':
+    elif tr_type == 'capital':
 
         # Extract text from <p> elements, make into one big string
         text_list = p_selector.xpath(".//text()").extract()
@@ -98,6 +98,12 @@ def extract_text_from_p(p_selector, default_speaker_name, tr_type, first=False):
                 sentence = split_text[1]
             else:
                 sentence = ""
+        elif split_text[0].replace("Mc", "MC").replace("Mr", "MR").isupper():
+            speaker_name = split_text[0]
+            if len(split_text) > 1:
+                sentence = split_text[1]
+            else:
+                sentence = ""
         else:
             sentence = all_text
 
@@ -112,26 +118,17 @@ def extract_text_from_p(p_selector, default_speaker_name, tr_type, first=False):
 # Very large function to extract the text from a transcript selector.
 def extract_transcript_selector(transcript_selector, transcript_type):
     labelled_speeches = []
-
-    if transcript_type == 'italic':
-        transcript_type = 'i'
-    if transcript_type == 'bold':
-        transcript_type = 'b'
-    if transcript_type == 'capital':
-        transcript_type = 'u'
+    speaker_name = "unknown"
 
     # Create a new selector which selects the displaytext element.
     # This is for the first paragraph, which doesn't sit within <p> tags.
     first_element = transcript_selector.xpath("//span[@class='displaytext']")
     first_element = cf.list_to_item(first_element)
 
-    speaker_name = "unknown"
-
     # Need to pass the 'first' argument as True, because we're dealing with the first element.
-    labelled_speech = extract_text_from_p(first_element, speaker_name, tr_type=transcript_type, first=True)
-
-    # Once it's returned, take the speaker's name from the dict.
-    speaker_name = labelled_speech["speaker"]
+    labelled_speech = extract_text_from_p(first_element, tr_type=transcript_type, first=True)
+    if labelled_speech["speaker"] is not None:
+        speaker_name = labelled_speech["speaker"]
 
     # Add the returned dict to the list of speeches.
     labelled_speeches.append(labelled_speech)
@@ -142,8 +139,26 @@ def extract_transcript_selector(transcript_selector, transcript_type):
     # Loop through all these <p> Selectors
     for p_selector in p_selector_list:
         # Call the extraction function again
-        labelled_speech = extract_text_from_p(p_selector, speaker_name, tr_type=transcript_type)
-        speaker_name = labelled_speech["speaker"]
+        labelled_speech = extract_text_from_p(p_selector, tr_type=transcript_type)
+
+        # Once it's returned, take the speaker's name from the dict.
+        new_speaker_name = labelled_speech["speaker"]
+
+        if new_speaker_name is not None:
+            if "APPLAUSE" in new_speaker_name:
+                new_speaker_name = new_speaker_name.replace("(APPLAUSE)", "").replace("(APPLAUSE.)", "").replace(" ", "")
+            if "(LAUGHTER)" in new_speaker_name:
+                new_speaker_name = new_speaker_name.replace("(LAUGHTER)", "").replace(" ", "")
+            if "(COMMERCIAL BREAK)" in new_speaker_name:
+                new_speaker_name = new_speaker_name.replace("(COMMERCIAL BREAK)", "").replace(" ", "")
+
+        # If the new speaker's name is valid, set the speaker name to that.
+        # Otherwise, change what the labelled speech says.
+        if new_speaker_name != "" and new_speaker_name is not None:
+            speaker_name = new_speaker_name
+        else:
+            labelled_speech["speaker"] = speaker_name
+
         labelled_speeches.append(labelled_speech)
 
     return labelled_speeches
@@ -167,9 +182,7 @@ def process_html_file():
     debate_name = selector.get_debate_name()
     debate_date_iso = selector.get_debate_date()
 
-    # DATA
-
-    # Sort the transcripts out by the different ways that we will extract
+    # CLASSIFY: Sort the transcripts out by the different ways that we will extract
     # information from them
     if len(selector.xpath("//span[@class='displaytext']//b//text()").extract()) >= 50:
         transcript_type = "bold"
@@ -185,16 +198,22 @@ def process_html_file():
         if sentence.count(":") >= 50:
             transcript_type = 'capital'
         else:
-            # At the moment, we're not doing anything with this type of transcript (9/147)
+            # At the moment, we're not doing anything with this type of transcript (n=9/147)
             return
 
+    # Run the function for extracting the speeches from the transcript
     sentence_dicts = extract_transcript_selector(selector, transcript_type)
 
     # Identify all the speakers in the transcript
     speaker_list = []
-
-    for sentenceDict in sentence_dicts:
-        speaker_list.append(sentenceDict["speaker"])
+    for sentence_dict in sentence_dicts:
+        if sentence_dict["speaker"] is not None:
+            sentence_dict["speaker"] = sentence_dict["speaker"].replace('/',' ')
+        if sentence_dict["speaker"] is None:
+            print "sentence_dict"
+            print sentence_dict
+        print [sentence_dict["speaker"],sentence_dict["text"]]
+    speaker_list.append(sentence_dict["speaker"])
 
     for speaker in set(speaker_list):
         # Make a string for each speaker
@@ -202,14 +221,13 @@ def process_html_file():
 
         if speaker is None:
             speaker = "None"
-        speaker = speaker.replace("/", "")
 
         # Check all of the text to see if it belongs to that speaker and add it.
         filename = None
         txt_filename = None
-        for sentenceDict in sentence_dicts:
-            if sentenceDict["speaker"] == speaker and sentenceDict["text"] is not None:
-                all_text_of_speaker = all_text_of_speaker + " " + (sentenceDict["text"])
+        for sentence_dict in sentence_dicts:
+            if sentence_dict["speaker"] == speaker:# and sentenceDict["text"] is not None:
+                all_text_of_speaker = all_text_of_speaker + " " + (sentence_dict["text"])
                 filename = speaker + " " + debate_date_iso + ".json"
                 txt_filename = speaker + " " + debate_date_iso + ".txt"
 
@@ -222,12 +240,18 @@ def process_html_file():
             with open(os.path.join(transcriptDir, filename), 'w') as f:
                 json.dump(file_dict, f)
         else:
+            print debate_date_iso
+            print debate_name
+            print set(speaker_list)
+            print speaker
             raise Exception('A filename error occurred.')
 
         if txt_filename is not None:
             with open(os.path.join(transcriptDir, txt_filename), 'w') as f:
                 f.write(all_text_of_speaker.encode('utf8'))
         else:
+            print debate_date_iso
+            print debate_name
             raise Exception('A filename error occurred.')
 
 
