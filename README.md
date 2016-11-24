@@ -41,8 +41,8 @@ If you want to access the text or other attributes from these JSON files, you ca
 transcriptList = os.listdir('transcripts')
 
 for item in transcriptList:
-    with file(os.path.join('transcripts', item), 'r') as f:
-        transcript = json.read(f)
+    with open(os.path.join('transcripts', item), 'r') as f:
+        transcript = json.load(f)
         
     # For full text of the speech of one person in the transcript:    
     text = transcript['text']
