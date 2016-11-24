@@ -210,10 +210,10 @@ def process_html_file():
         if sentence_dict["speaker"] is not None:
             sentence_dict["speaker"] = sentence_dict["speaker"].replace('/',' ')
         if sentence_dict["speaker"] is None:
-            print "sentence_dict"
-            print sentence_dict
-        print [sentence_dict["speaker"],sentence_dict["text"]]
-    speaker_list.append(sentence_dict["speaker"])
+            pass
+        speaker_list.append(sentence_dict["speaker"])
+
+    speaker_dicts = []
 
     for speaker in set(speaker_list):
         # Make a string for each speaker
@@ -223,37 +223,30 @@ def process_html_file():
             speaker = "None"
 
         # Check all of the text to see if it belongs to that speaker and add it.
-        filename = None
-        txt_filename = None
         for sentence_dict in sentence_dicts:
-            if sentence_dict["speaker"] == speaker:# and sentenceDict["text"] is not None:
+            if sentence_dict["speaker"] == speaker and sentence_dict["text"] is not None:
                 all_text_of_speaker = all_text_of_speaker + " " + (sentence_dict["text"])
-                filename = speaker + " " + debate_date_iso + ".json"
-                txt_filename = speaker + " " + debate_date_iso + ".txt"
 
         # Finally, construct the dictionary that will be converted to a file.
-        file_dict = {"speaker": speaker, "date": debate_date_iso, "description": debate_name,
-                     "text": all_text_of_speaker}
+        if speaker[-1] == " ":
+            speaker = speaker[:-1]
+        if speaker[-1] == ":":
+            speaker = speaker[:-1]
+        if speaker[-1] == ".":
+            speaker = speaker[:-1]
+        speaker_dict = {"speaker": speaker, "text": all_text_of_speaker}
+        speaker_dicts.append(speaker_dict)
 
-        # Write this to a file
-        if filename is not None:
-            with open(os.path.join(transcriptDir, filename), 'w') as f:
-                json.dump(file_dict, f)
-        else:
-            print debate_date_iso
-            print debate_name
-            print set(speaker_list)
-            print speaker
-            raise Exception('A filename error occurred.')
+    file_dict = {"date": debate_date_iso, "description": debate_name, "speaker_dicts": speaker_dicts}
+    filename = debate_date_iso + " " + debate_name + ".json"
+    txt_filename = debate_date_iso + " " + debate_name + ".txt"
 
-        if txt_filename is not None:
-            with open(os.path.join(transcriptDir, txt_filename), 'w') as f:
-                f.write(all_text_of_speaker.encode('utf8'))
-        else:
-            print debate_date_iso
-            print debate_name
-            raise Exception('A filename error occurred.')
-
+    # Write this to a file
+    if filename is not None:
+        with open(os.path.join(transcriptDir, filename), 'w') as f:
+            json.dump(file_dict, f)
+    else:
+        raise Exception('A filename error occurred.')
 
 for htmlFile in htmlList:
     process_html_file()
