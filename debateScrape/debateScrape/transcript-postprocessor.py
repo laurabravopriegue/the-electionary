@@ -224,7 +224,7 @@ def process_html_file():
         for sentence_dict in sentence_dicts:
             if sentence_dict['speaker'] != speaker:
                 if sentence_dict['speaker'] is None:
-                    sentence_dict['speaker'] = "Nonef"
+                    sentence_dict['speaker'] = "None"
                 f.writelines("\n\n")
                 f.writelines(sentence_dict['speaker'].encode('utf8'))
             f.writelines("\n    ")
