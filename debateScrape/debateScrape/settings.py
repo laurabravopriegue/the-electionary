@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+# FILE USED BY SCRAPY - DON'T DELETE
+
 # Scrapy settings for debateScrape project
 #
 # For simplicity, this file contains only settings considered important or
