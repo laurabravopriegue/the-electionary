@@ -2,11 +2,17 @@
 
 ## What this is
 
-Software to download a series of debate transcripts and process them.
+Software to download a series of debate transcripts from the [American Presidency Project](http://presidency.ucsb.edu/debates.php) and process them.
+
+## Branches
+
+The `master` branch doesn't do any collection of the transcripts from the website - it only does processing.
+
+If you want to download the HTML files from the website, clone the `download-files` branch instead. That also includes all the processing code.
 
 ## How to use it
 
-### Prerequisites
+### Prerequisites for downloading the HTML files
 
 You must have `scrapy` installed before using this code.
 
@@ -31,7 +37,7 @@ The HTML files will be stored in `debateScrape/debateScrape/html-files`.
  
 ### Processing the transcripts
 
-Now that you have all the HTML downloaded, you can now do any processing from the local files, which will be much faster and will prevent unnecessary load on the host.
+Now that you have all the HTML downloaded, you can now do any processing from the local files, which will be much faster and will prevent unnecessary load on the host. You can now clone `master` if you like.
 As a starting point, try running `transcript-postprocessor.py`.
 This will produce a transcript for each candidate's speech in an individual debate in JSON format, located in the `debateScrape/debateScrape/transcripts` folder.
 
