@@ -16,7 +16,7 @@ import commonfunctions as cf
 # By default, the program runs only for a sample of files.
 # To change this, change the following to False.
 runForSample = True
-# runForSample = False
+runForSample = False
 
 # Enter your working directories here:
 
@@ -28,7 +28,7 @@ if runForSample:
 # NOT SAMPLE
 else:
     htmlDirectory = 'html-output'
-    transcriptDir = 'transcripts-for-checking'
+    transcriptDir = 'transcripts-10thDec'
 
 # Make the directory to output to, if it doesn't exist already.
 if transcriptDir not in os.listdir(os.curdir):
@@ -107,7 +107,7 @@ def extract_text_from_p(p_selector, tr_type, first_element=False):
             for words in p_selector.xpath(".//text()").extract():
                 sentence += (" " + words)
 
-    elif tr_type == 'capital':
+    elif tr_type == 'upper':
 
         # Extract text from <p> element, make into one big string
         # We're not using the structure of the HTML here in a <p></p>
@@ -145,6 +145,7 @@ def extract_text_from_p(p_selector, tr_type, first_element=False):
     # Raise an exception if a malformed transcript type argument has been passed.
     # e.g. if tr_type = 'foo'
     else:
+        print tr_type
         raise Exception('Classification error occurred.')
 
     # Tidy up the sentence. Remove colons from the beginning of the string.
@@ -271,6 +272,7 @@ def create_text_file(debate_date_iso, debate_name, sentence_dicts):
 #                  "transcript_type": ""}
 # where text_by_speakers is a list of dicts, where each dict is:
 # {"speaker": "", text: ""}
+
 def process_html_file(html_file):
     # Read the HTML into a file object
     with file(os.path.join(htmlDirectory, html_file), 'r') as f:
@@ -353,10 +355,13 @@ def process_html_file(html_file):
         # Clean all text of the speaker, removing double spaces.
         all_text_of_speaker = all_text_of_speaker.replace("  ", " ")
         # remove first character if it's a space
-        if all_text_of_speaker[0] == " ":
-            all_text_of_speaker = all_text_of_speaker[1:]
-        if all_text_of_speaker[-1] == " ":
-            all_text_of_speaker = all_text_of_speaker[:-1]
+        if len(all_text_of_speaker) > 0:
+            if all_text_of_speaker[0] == " ":
+                all_text_of_speaker = all_text_of_speaker[1:]
+        # remove last character if it's a space
+        if len(all_text_of_speaker) > 0:
+            if all_text_of_speaker[-1] == " ":
+                all_text_of_speaker = all_text_of_speaker[:-1]
 
         # If the speaker is 'candidates' (non-case-sensitive),
         # this is metadata and we should move it outside the main body.
