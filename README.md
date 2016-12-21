@@ -1,5 +1,9 @@
 # the-electionary
 
+## IMPORTANT - DISCLAIMER
+
+This software is released under the MIT license. However, the transcripts collected by the program are subject to copyright and it is your sole responsibility to ensure that you use any data collected during your use of the software in accordance with the law.
+
 ## What this is
 
 Software to download a series of debate transcripts from the [American Presidency Project](http://presidency.ucsb.edu/debates.php) and process them.
