@@ -12,10 +12,10 @@ class MySpider(BaseSpider):
     download_delay = 5
 
     with file('urls.json', 'r') as f:
-        startData = json.load(f)
+        startUrls = json.load(f)
 
-    allowed_domains = startData["allowed_domains"]
-    start_urls = startData["start_urls"]
+    allowed_domains = ['ucsb.edu']
+    start_urls = startUrls
 
     def parse(self, response):
         hxs = HtmlXPathSelector(response)
