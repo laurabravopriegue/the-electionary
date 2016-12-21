@@ -34,9 +34,7 @@ class MySpider(BaseSpider):
         # e.g. <a href='www.example.com'>
         # .extract() then extracts the text element from this, and returns a list
         urls = hxs.select("//td[@class='doctext']/a/@href").extract()
-        
-        # Create a dictionary which has the urls included in it.
-        dictionary = {"allowed_domains": self.allowed_domains, "start_urls": urls}
 
+        # Save the list of URLs to a JSON file
         with open('urls.json', 'w') as f:
-            json.dump(dictionary, f)
+            json.dump(urls, f)
