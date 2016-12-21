@@ -28,7 +28,7 @@ if runForSample:
 # NOT SAMPLE
 else:
     htmlDirectory = 'html-output'
-    transcriptDir = 'transcripts-10thDec'
+    transcriptDir = 'transcripts-21stDec'
 
 # Make the directory to output to, if it doesn't exist already.
 if transcriptDir not in os.listdir(os.curdir):
@@ -227,7 +227,7 @@ def extract_transcript_selector(transcript_selector, transcript_type):
 
 
 # Function to clean up the speaker's name.
-def speaker_clean(speaker):
+def speaker_clean(speaker, debate_name, debate_date):
     # Change None to a string.
     if speaker is None or speaker == "":
         speaker = "None"
@@ -239,6 +239,35 @@ def speaker_clean(speaker):
             speaker = speaker[:-1]
         if speaker == "":
             return speaker
+
+    # Remove (?) if it's at the end of a speaker's name
+    if speaker[-3:] == "(?)":
+        speaker = speaker[:-3]
+        for character in [" ", ":", "."]:
+            if speaker[-1] == character:
+                speaker = speaker[:-1]
+            if speaker == "":
+                return speaker
+
+    if [True for text in ['moderators', 'participants', 'candidates'] if speaker.lower() == text]:
+        return speaker
+
+    with open('allSpeakersOut.json', 'r') as f:
+        allSpeakersOut = json.load(f)
+
+    success = False
+    for debate in allSpeakersOut:
+        if debate['date'] == debate_date and debate['description'] == debate_name:
+            for speakerList in debate['speakerLists']:
+                print speakerList
+                for speakerName in speakerList:
+                    if speakerName == speaker:
+                        speaker = speakerList[0]
+                        success = True
+
+    if not success:
+        print speaker
+        raise Exception('Speaker names aren\'t working')
 
     return speaker
 
@@ -256,7 +285,7 @@ def create_text_file(debate_date_iso, debate_name, sentence_dicts):
                 if sentence_dict['speaker'] is None:
                     sentence_dict['speaker'] = "None"
                 f.writelines("\n\n")
-                f.writelines(speaker_clean(sentence_dict['speaker']).encode('utf8'))
+                # f.writelines(speaker_clean(sentence_dict['speaker']).encode('utf8'))
             f.writelines("\n    ")
             if sentence_dict['text'] is not None:
                 f.writelines(sentence_dict['text'].encode('utf8'))
@@ -329,6 +358,13 @@ def process_html_file(html_file):
         if sentence_dict["speaker"] is not None:
             # Remove slashes - these cause problems when saving files, as they create directories
             sentence_dict["speaker"] = sentence_dict["speaker"].replace('/', ' ')
+        else:
+            sentence_dict['speaker'] = 'None'
+
+        if sentence_dict["speaker"].lower() != 'participants' \
+                and sentence_dict['speaker'].lower() != 'candidates' and sentence_dict[
+                'speaker'].lower() != 'moderators':
+            sentence_dict["speaker"] = speaker_clean(sentence_dict["speaker"], debate_name, debate_date_iso)
 
         speaker_list.append(sentence_dict["speaker"])
 
@@ -338,6 +374,7 @@ def process_html_file(html_file):
 
     candidates = None
     moderators = None
+    participants = None
 
     # Go through all the speakers, not using duplicates
     for speaker in set(speaker_list):
@@ -348,9 +385,6 @@ def process_html_file(html_file):
         for sentence_dict in sentence_dicts:
             if sentence_dict["speaker"] == speaker and sentence_dict["text"] is not None:
                 all_text_of_speaker = all_text_of_speaker + " " + (sentence_dict["text"])
-
-        # Clean the speaker's name
-        speaker = speaker_clean(speaker)
 
         # Clean all text of the speaker, removing double spaces.
         all_text_of_speaker = all_text_of_speaker.replace("  ", " ")
@@ -363,19 +397,41 @@ def process_html_file(html_file):
             if all_text_of_speaker[-1] == " ":
                 all_text_of_speaker = all_text_of_speaker[:-1]
 
+        with open('allSpeakersOut.json', 'r') as f:
+            allSpeakersOut = json.load(f)
+
+        success = False
+
+        # Add speaker lists
+        if not [True for text in ['participants', 'moderators', 'candidates'] if speaker.lower() == text]:
+            for debate in allSpeakersOut:
+                if debate['date'] == debate_date_iso and debate['description'] == debate_name:
+                    for speakerList in debate['speakerLists']:
+                        if speakerList[0] == speaker:
+                            speaker_aliases = speakerList
+                            success = True
+
+            if not success:
+                print speaker
+                raise Exception('Speaker names aren\'t working')
+
         # If the speaker is 'candidates' (non-case-sensitive),
         # this is metadata and we should move it outside the main body.
         if speaker.lower() == "candidates":
-            candidates_label = speaker
+            candidates_label = 'candidates'
             candidates = all_text_of_speaker
 
         # Similarly for 'moderators'
         elif speaker.lower() == "moderators":
-            moderators_label = speaker
+            moderators_label = 'moderators'
             moderators = all_text_of_speaker
 
+        elif speaker.lower() == 'participants':
+            participants_label = 'participants'
+            participants = all_text_of_speaker
+
         else:
-            speaker_dict = {"speaker": speaker, "text": all_text_of_speaker}
+            speaker_dict = {"speaker": speaker, "text": all_text_of_speaker, "speaker-aliases": speaker_aliases}
             text_by_speakers.append(speaker_dict)
 
     # Create a dictionary which will be written to a file
@@ -387,6 +443,8 @@ def process_html_file(html_file):
         file_dict[candidates_label] = candidates
     if moderators:
         file_dict[moderators_label] = moderators
+    if participants:
+        file_dict[participants_label] = participants
 
     filename = debate_date_iso + " " + debate_name + ".json"
 
